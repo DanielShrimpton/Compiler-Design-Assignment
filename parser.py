@@ -12,6 +12,7 @@ def main():
     variables = []
     constants = []
     predicates = []
+    arity = {}
     equality = ''
     connectives = []
     quantifiers = []
@@ -24,6 +25,8 @@ def main():
                 constants = re.findall(r'[ ](\S*)', line)
             elif 'predicates: ' in line:
                 predicates = re.findall(r'[ ](\S*)', line)
+                for pred in predicates:
+                    arity[re.search(r'(\w)\[', pred).group(1)] = re.search(r'\d+', pred).group()
             elif 'equality: ' in line:
                 equality = re.search(r'[ ](\S*)', line).group(1)
             elif 'connectives: ' in line:
@@ -37,13 +40,13 @@ def main():
                     if x != '':
                         formula.append(x)
 
-    print('variables: ' + ' '.join(variables))
-    print('constants: ' + ' '.join(constants))
-    print('predicates: ' + ' '.join(predicates))
-    print('equality: ' + equality)
-    print('connectives: ' + ' '.join(connectives))
-    print('quantifiers: ' + ' '.join(quantifiers))
-    print('formula: ' + ' '.join(formula))
+    # print('variables: ' + ' '.join(variables))
+    # print('constants: ' + ' '.join(constants))
+    # print('predicates: ' + ' '.join(predicates))
+    # print('equality: ' + equality)
+    # print('connectives: ' + ' '.join(connectives))
+    # print('quantifiers: ' + ' '.join(quantifiers))
+    # print('formula: ' + ' '.join(formula))
 
     # print(variables)
     # print(constants)
@@ -52,6 +55,43 @@ def main():
     # print(connectives)
     # print(quantifiers)
     # print(formula)
+
+    rules(variables, constants, arity, equality, connectives, quantifiers)
+
+
+def rules(v, consts, arity, eq, conns, quants):
+    """function to create rules"""
+
+    for elem in range(len(quants)):
+        quants[elem] += ' Var Th'
+
+    for elem in range(len(conns)):
+        conns[elem] += ' Th'
+
+    const = '(Const=Var) Th'
+    formula = '(replace) Th'
+
+    preds = []
+    for pred in arity.keys():
+        preds.append(pred + '(')
+        for i in range(int(arity[pred]) - 1):
+            preds[-1] += 'Var, '
+        preds[-1] += 'Var) Th'
+
+    thing = ['', quants, conns, 'Var Th', formula]
+
+    prod_rules = ['S\t-> Quants|Preds|(Const=\\v) Th|Formula',
+                  'Th\t-> \\empty|Quants|Preds|\\v Th|Preds|Formula',
+                  '\\v\t-> ' + '|'.join(v),
+                  'Const\t-> ' + '|'.join(consts),
+                  'Quants\t-> ' + '|'.join(quants).replace('Var', '\\v'),
+                  'Preds\t-> ' + '|'.join(preds).replace('Var', '\\v'),
+                  'Conns\t-> ' + '|'.join(conns),
+                  'Formula\t-> (Quants|Preds|(Const=\\v) Th|Formula) Th'
+                  ]
+
+    for line in prod_rules:
+        print(line)
 
 
 if __name__ == '__main__':
