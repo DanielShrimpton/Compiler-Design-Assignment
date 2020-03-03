@@ -68,7 +68,7 @@ def rules(v, consts, arity, eq, conns, quants):
     for elem in range(len(conns)):
         conns[elem] += ' Th'
 
-    const = '(Const=Var) Th'
+    const = '(Const' + eq + 'Var) Th'
     formula = '(replace) Th'
 
     preds = []
@@ -80,14 +80,14 @@ def rules(v, consts, arity, eq, conns, quants):
 
     thing = ['', quants, conns, 'Var Th', formula]
 
-    prod_rules = ['S\t-> Quants|Preds|(Const=\\v) Th|Formula',
-                  'Th\t-> \\empty|Quants|Preds|\\v Th|Preds|Formula',
+    prod_rules = ['S\t-> Quants|Preds|' + const.replace('Var', '\\v') + '|Formula',
+                  'Formula\t-> (Quants|Preds|' + const.replace('Var', '\\v') + '|Formula) Th',
+                  'Th\t-> \\epsilon|Quants|Preds|\\v Th|Preds|Formula',
                   '\\v\t-> ' + '|'.join(v),
                   'Const\t-> ' + '|'.join(consts),
                   'Quants\t-> ' + '|'.join(quants).replace('Var', '\\v'),
                   'Preds\t-> ' + '|'.join(preds).replace('Var', '\\v'),
-                  'Conns\t-> ' + '|'.join(conns),
-                  'Formula\t-> (Quants|Preds|(Const=\\v) Th|Formula) Th'
+                  'Conns\t-> ' + '|'.join(conns)
                   ]
 
     for line in prod_rules:
