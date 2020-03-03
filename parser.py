@@ -19,9 +19,9 @@ def main():
     with open(file, 'r') as file:
         for line in file.readlines():
             if 'variables: ' in line:
-                variables = re.findall(r'[ ](\S)', line)
+                variables = re.findall(r'[ ](\S*)', line)
             elif 'constants: ' in line:
-                constants = re.findall(r'[ ](\S)', line)
+                constants = re.findall(r'[ ](\S*)', line)
             elif 'predicates: ' in line:
                 predicates = re.findall(r'[ ](\S*)', line)
             elif 'equality: ' in line:
@@ -31,7 +31,7 @@ def main():
             elif 'quantifiers: ' in line:
                 quantifiers = re.findall(r'[ ](\S*)', line)
             elif 'formula: ' in line:
-                formula = re.findall(r'[ ](\S{1,100})', line)
+                formula = re.findall(r'\s(\S{1,100})', line)
             else:
                 for x in line.split(' '):
                     if x != '':
@@ -44,6 +44,14 @@ def main():
     print('connectives: ' + ' '.join(connectives))
     print('quantifiers: ' + ' '.join(quantifiers))
     print('formula: ' + ' '.join(formula))
+
+    # print(variables)
+    # print(constants)
+    # print(predicates)
+    # print(equality)
+    # print(connectives)
+    # print(quantifiers)
+    # print(formula)
 
 
 if __name__ == '__main__':
