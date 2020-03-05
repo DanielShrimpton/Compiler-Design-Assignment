@@ -8,10 +8,14 @@ OUTPUT_FOLDER = './Outputs/'
 
 def main():
     """Main function"""
-    file = INPUT_FOLDER + sys.argv[1]
+    try:
+        file = INPUT_FOLDER + sys.argv[1]
+    except IndexError:
+        print("error, no file, using default example")
+        file = INPUT_FOLDER + 'example.txt'
     variables = []
     constants = []
-    predicates = []
+    # predicates = []
     arity = {}
     equality = ''
     connectives = []
@@ -54,9 +58,9 @@ def main():
     # print(equality)
     # print(connectives)
     # print(quantifiers)
-    # print(formula)
+    print(formula)
 
-    rules(variables, constants, arity, equality, connectives, quantifiers)
+    prod_rules = rules(variables, constants, arity, equality, connectives, quantifiers)
 
 
 def rules(v, consts, arity, eq, conns, quants):
@@ -79,19 +83,22 @@ def rules(v, consts, arity, eq, conns, quants):
         preds[-1] += 'Var) Th'
 
     thing = ['', quants, conns, 'Var Th', formula]
+    const_ = const.replace('Var', '\\v')
 
-    prod_rules = ['S\t-> Quants|Preds|' + const.replace('Var', '\\v') + '|Formula',
-                  'Formula\t-> (Quants|Preds|' + const.replace('Var', '\\v') + '|Formula) Th',
-                  'Th\t-> \\epsilon|Quants|Preds|\\v Th|Preds|Formula',
-                  '\\v\t-> ' + '|'.join(v),
-                  'Const\t-> ' + '|'.join(consts),
-                  'Quants\t-> ' + '|'.join(quants).replace('Var', '\\v'),
-                  'Preds\t-> ' + '|'.join(preds).replace('Var', '\\v'),
-                  'Conns\t-> ' + '|'.join(conns)
-                  ]
+    prod_rules_ = {'S': ['Quants', 'Preds', const_, 'Formula'],
+                   'Formula': ['(Quants', 'Preds', const_, 'Formula) Th'],
+                   'Th': ['\\epsilon', 'Quants', 'Preds', '\\v Th', 'Preds', 'Formula'],
+                   '\\v': v,
+                   'Const': consts,
+                   'Quants': [x.replace('Var', '\\v') for x in quants],
+                   'Preds': [x.replace('Var', '\\v') for x in preds],
+                   'Conns': conns
+                   }
 
-    for line in prod_rules:
-        print(line)
+    for key in prod_rules_.keys():
+        print(key + '\t-> ' + '|'.join(prod_rules_[key]))
+
+    return prod_rules_
 
 
 if __name__ == '__main__':
