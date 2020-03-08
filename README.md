@@ -6,6 +6,14 @@
  It uses the `re` package so you will need to make sure you have that installed to be able to run 
  it.
  
+ To generate the parse tree the package `anytree` is used. Install it with `pip install anytree`. 
+However a prerequisite to `anytree` is GraphViz. On Windows, either find the download page and
+install using the `.msi` installer or unzip and add the location to the PATH variables. 
+[Here](https://graphviz.gitlab.io/_pages/Download/Download_windows.html "Windows GraphViz Download") 
+is a link to the Windows download page. (I had problems with the installer not adding the files to
+PATH variables, so once it is installed check if the `\bin\ ` folder is in the PATH environment
+variables, and if it isn't, add it. I had to add `C:\Program Files (x86)\Graphviz2.38\bin\ `). 
+ 
  ### Setup
  The python file should be stored in the root directory of where you want this to run. The folder 
  structure should then be as follows:
