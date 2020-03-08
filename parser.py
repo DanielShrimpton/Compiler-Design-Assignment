@@ -1,6 +1,9 @@
 """File for compiler design to parse FO logic"""
 import re
 import sys
+from anytree import Node, RenderTree
+from anytree.exporter import DotExporter
+
 
 INPUT_FOLDER = './Inputs/'
 OUTPUT_FOLDER = './Outputs/'
@@ -15,7 +18,6 @@ def main():
         file = INPUT_FOLDER + 'example.txt'
     variables = []
     constants = []
-    # predicates = []
     arity = {}
     equality = ''
     connectives = []
@@ -44,20 +46,8 @@ def main():
                     if x != '':
                         formula.append(x)
 
-    # print('variables: ' + ' '.join(variables))
-    # print('constants: ' + ' '.join(constants))
-    # print('predicates: ' + ' '.join(predicates))
-    # print('equality: ' + equality)
-    # print('connectives: ' + ' '.join(connectives))
-    # print('quantifiers: ' + ' '.join(quantifiers))
-    # print('formula: ' + ' '.join(formula))
+    predicates = arity.keys()
 
-    # print(variables)
-    # print(constants)
-    # print(predicates)
-    # print(equality)
-    # print(connectives)
-    # print(quantifiers)
     print(formula)
 
     prod_rules = rules(variables, constants, arity, equality, connectives, quantifiers)
@@ -67,32 +57,26 @@ def rules(v, consts, arity, eq, conns, quants):
     """function to create rules"""
 
     for elem in range(len(quants)):
-        quants[elem] += ' Var Th'
-
-    for elem in range(len(conns)):
-        conns[elem] += ' Th'
-
-    const = '(Const' + eq + 'Var) Th'
-    formula = '(replace) Th'
+        quants[elem] += ' <var>'
 
     preds = []
     for pred in arity.keys():
         preds.append(pred + '(')
         for i in range(int(arity[pred]) - 1):
-            preds[-1] += 'Var, '
-        preds[-1] += 'Var) Th'
+            preds[-1] += '<var>, '
+        preds[-1] += '<var>)'
 
-    thing = ['', quants, conns, 'Var Th', formula]
-    const_ = const.replace('Var', '\\v')
+    neg = conns[-1]
 
-    prod_rules_ = {'S': ['Quants', 'Preds', const_, 'Formula'],
-                   'Formula': ['(Quants', 'Preds', const_, 'Formula) Th'],
-                   'Th': ['\\epsilon', 'Quants', 'Preds', '\\v Th', 'Preds', 'Formula'],
-                   '\\v': v,
-                   'Const': consts,
-                   'Quants': [x.replace('Var', '\\v') for x in quants],
-                   'Preds': [x.replace('Var', '\\v') for x in preds],
-                   'Conns': conns
+    prod_rules_ = {'<S>': ['<formula>', '(<formula> <conn> <formula>)'],
+                   '<formula>': ['<quant> <formula>', '(<formula> <conn> <formula>', '<assign>',
+                                 '<constVar>', '<pred>', neg + ' <formula>'],
+                   '<quant>': quants,
+                   '<var>': v,
+                   '<constVar>': consts + ['<var>'],
+                   '<assign>': ['(<constVar> ' + eq + ' <constVar>)'],
+                   '<pred>': preds,
+                   '<conn>': conns[:-1]
                    }
 
     for key in prod_rules_.keys():
