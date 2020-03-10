@@ -134,6 +134,15 @@ class Grammar:
                 t = 2
             print(key + '\t' * t + '->\t' + '|'.join(self.grammar[key]))
 
+    def add_node(self, tag, parent=0):
+        if parent != 0:
+            parent = tree[str(self.ID - parent)]
+        else:
+            parent = self.parent
+
+        tree[str(self.ID)] = Node(tag, parent=parent)
+        self.ID += 1
+
     def parse(self):
         self.current = 0
         while self.current < len(self.formula):
@@ -172,35 +181,39 @@ class Grammar:
     def _formula(self):
         atom = self.formula[self.current]
         if atom in self.quantifiers:
-            tree[str(self.ID)] = Node('<quant>', parent=self.parent)
-            self.ID += 1
-            tree[str(self.ID)] = Node(atom, parent=tree[str(self.ID - 1)])
-            self.ID += 1
-            tree[str(self.ID)] = Node('<formula>', parent=self.parent)
-            self.next_par = tree[str(self.ID)]
-            self.parent = tree[str(self.ID - 2)]
-            self.ID += 1
+            self.add_node('<quant>')
+            self.add_node(atom, 1)
+            self.add_node('<formula>')
+            self.next_par = tree[str(self.ID - 1)]
+            self.parent = tree[str(self.ID - 3)]
             self.current += 1
             self._quant()
             self.parent = self.next_par
         elif atom in self.predicates:
-            tree[str(self.ID)] = Node('<pred>', parent=self.parent)
-            self.ID += 1
-            tree[str(self.ID)] = Node(atom, parent=tree[str(self.ID - 1)])
-            self.ID += 1
+            self.add_node('<pred>')
+            self.add_node(atom, 1)
             self.next_par = self.parent
             self.parent = tree[str(self.ID - 2)]
             self.current += 1
             self._pred()
             self.parent = self.next_par
+        elif atom == '(':
+            if self.formula[self.current + 2] == self.equality:
+                self.add_node('<equality>')
+                self.next_par = self.parent
+                self.parent = tree[str(self.ID - 1)]
+                self._assign()
+                self.parent = self.next_par
 
     def _quant(self):
         atom = self.formula[self.current]
         if atom in self.variables:
-            tree[str(self.ID)] = Node('<var>', parent=self.parent)
-            self.ID += 1
-            tree[str(self.ID)] = Node(atom, parent=tree[str(self.ID - 1)])
-            self.ID += 1
+            self.add_node('<var>')
+            self.add_node(atom, 1)
+        else:
+            print("Bad quantifier, not using variables: %s %s" % (self.formula[self.current - 1],
+                  atom))
+            sys.exit(1)
 
 
     def _var(self):
@@ -210,14 +223,38 @@ class Grammar:
         return None
 
     def _assign(self):
-        return None
+        self.add_node('(')
+        self.current += 1
+        atom = self.formula[self.current]
+        if (atom in self.constants) or (atom in self.variables):
+            self.add_node('<constVar>')
+        else:
+            print("Error, assignment using unknown constant/var: %s" % atom)
+            sys.exit(1)
+        self.add_node(self.equality)
+        self.current += 2
+        atom = self.formula[self.current]
+        if (atom in self.constants) or (atom in self.variables):
+            self.add_node('<constVar>')
+            self.add_node(atom, parent=1)
+        else:
+            print("Error, assignment using unknown constant/var: %s" % atom)
+            sys.exit(1)
+        self.current += 1
+        atom = self.formula[self.current]
+        if atom == ')':
+            self.add_node(')')
+        else:
+            print("Error, assignment missing closing bracket: %s" %
+                  " ".join(self.formula[self.current-4:self.current]))
+            sys.exit(1)
+        self.current += 1
 
     def _pred(self):
         atom = self.formula[self.current]
         pred = self.formula[self.current - 1]
         if atom == '(':
-            tree[str(self.ID)] = Node('(', parent=self.parent)
-            self.ID += 1
+            self.add_node('(')
         else:
             print("Error, syntax error! Predicate %s isn't followed by '('." % pred)
             sys.exit(1)
@@ -226,12 +263,9 @@ class Grammar:
         atom = self.formula[self.current]
         while arity > 0:
             if (atom in self.variables) and (self.formula[self.current + 1] == ','):
-                tree[str(self.ID)] = Node('<var>', parent=self.parent)
-                self.ID += 1
-                tree[str(self.ID)] = Node(',', parent=self.parent)
-                self.ID += 1
-                tree[str(self.ID)] = Node(atom, parent=tree[str(self.ID - 2)])
-                self.ID += 1
+                self.add_node('<var>')
+                self.add_node(',')
+                self.add_node(atom, 2)
                 self.current += 2
                 atom = self.formula[self.current]
             else:
@@ -239,18 +273,15 @@ class Grammar:
                 sys.exit(1)
             arity -= 1
         if atom in self.variables:
-            tree[str(self.ID)] = Node('<var>', parent=self.parent)
-            self.ID += 1
-            tree[str(self.ID)] = Node(atom, parent=tree[str(self.ID - 1)])
-            self.ID += 1
+            self.add_node('<var>')
+            self.add_node(atom, 1)
         else:
             print("Error, syntax error! Predicate %s isn't formatted correctly" % pred)
             sys.exit(1)
         self.current += 1
         atom = self.formula[self.current]
         if atom == ')':
-            tree[str(self.ID)] = Node(')', parent=self.parent)
-            self.ID += 1
+            self.add_node(')')
         else:
             print("Error, syntax error! Predicate %s isn't formatted correctly: missing ')'" % pred)
             sys.exit(1)
