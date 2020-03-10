@@ -5,13 +5,16 @@ import sys
 from anytree import Node, RenderTree
 from anytree.exporter import DotExporter
 
-
 INPUT_FOLDER = './Inputs/'
 OUTPUT_FOLDER = './Outputs/'
 
 
 class Grammar:
+    """A class to read in a formula and variables etc from a file and create a grammar and check
+    it is valid."""
+
     def __init__(self):
+        """The init function, setting up variables and then read in from file"""
         # Initialise the variables we will need
         self.variables = []
         self.constants = []
@@ -28,6 +31,8 @@ class Grammar:
         self.read_file()
 
     def read_file(self):
+        """Function to read in from file supplied from the command line and then update
+        corresponding variables"""
         try:
             file = INPUT_FOLDER + sys.argv[1]
         except IndexError:
@@ -66,7 +71,24 @@ class Grammar:
             sys.exit(2)
         self.neg = self.connectives.pop(-1)
 
+        print(self.formula)
+        self.gen_grammar()
+        for atom in self.formula:
+            if (len(atom) > 1) and (any(terminal in atom for terminal in self.terminals)):
+                if atom not in self.terminals:
+                    temp = re.split(r'(\(|\)|,)', atom)
+                    ind = self.formula.index(atom)
+                    temp = [x for x in temp if x != '']
+                    num = len(temp) - 1
+                    self.formula.pop(ind)
+                    while num >= 0:
+                        self.formula.insert(ind, temp[num])
+                        num -= 1
+
+        print(self.formula)
+
     def gen_grammar(self):
+        """Generate the grammar, the production rules and terminal and non-terminal symbols"""
         self.terminals = self.quantifiers + self.predicates + self.connectives + [self.equality] \
                          + self.constants + self.variables + [',', '(', ')']
 
@@ -74,7 +96,7 @@ class Grammar:
         print("\nGrammar Production Rules: \n")
 
         quants = self.quantifiers[:]  # Make a copy of the list so as not to change the original
-                                      # list
+        #                               list
 
         for elem in range(len(quants)):
             quants[elem] += ' <var>'
@@ -112,7 +134,7 @@ class Grammar:
     def _var(self):
         return None
 
-    def _constVar(self):
+    def _const_var(self):
         return None
 
     def _assign(self):
@@ -129,4 +151,4 @@ class Grammar:
 
 
 thing = Grammar()
-thing.gen_grammar()
+# thing.gen_grammar()
