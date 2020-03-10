@@ -117,8 +117,8 @@ class Grammar:
                 preds[-1] += '<var>, '
             preds[-1] += '<var>)'
 
-        self.grammar = {'<S>': ['<formula>', '(<formula> <conn> <formula>)'],
-                        '<formula>': ['<quant> <formula>', '(<formula> <conn> <formula>',
+        self.grammar = {'<S>': ['<formula>'],
+                        '<formula>': ['<quant> <formula>', '(<formula> <conn> <formula>)',
                                       '<assign>', '<constVar>', '<pred>', self.neg + ' <formula>'],
                         '<quant>': quants,
                         '<var>': self.variables,
@@ -139,28 +139,29 @@ class Grammar:
         while self.current < len(self.formula):
             atom = self.formula[self.current]
             if atom in self.quantifiers:
-                print('quant')
+                pass
             elif atom in self.variables:
-                print("var")
+                pass
             elif atom == '(':
                 self.open += 1
             elif atom in self.predicates:
-                print("Predicate")
+                pass
             elif atom == ',':
-                print(",")
+                pass
             elif atom in self.connectives:
-                print("connective")
+                pass
             elif atom == self.neg:
-                print("neg")
+                pass
             elif atom == ")":
                 self.open -= 1
+                # self.parent = self.parent.parent
                 if self.open < 0:
                     print("ERROR: Invalid bracketing")
                     sys.exit(1)
             elif atom == self.equality:
-                print("equality")
+                pass
             elif atom in self.constants:
-                print("Constant")
+                pass
             else:
                 print("ERROR, incorrect syntax, unknown character: " + atom)
                 sys.exit(3)
@@ -176,12 +177,22 @@ class Grammar:
             tree[str(self.ID)] = Node(atom, parent=tree[str(self.ID - 1)])
             self.ID += 1
             tree[str(self.ID)] = Node('<formula>', parent=self.parent)
-            self.curr_node = tree[str(self.ID)]
+            self.next_par = tree[str(self.ID)]
             self.parent = tree[str(self.ID - 2)]
             self.ID += 1
             self.current += 1
             self._quant()
-            self.parent = self.curr_node
+            self.parent = self.next_par
+        elif atom in self.predicates:
+            tree[str(self.ID)] = Node('<pred>', parent=self.parent)
+            self.ID += 1
+            tree[str(self.ID)] = Node(atom, parent=tree[str(self.ID - 1)])
+            self.ID += 1
+            self.next_par = self.parent
+            self.parent = tree[str(self.ID - 2)]
+            self.current += 1
+            self._pred()
+            self.parent = self.next_par
 
     def _quant(self):
         atom = self.formula[self.current]
@@ -202,7 +213,48 @@ class Grammar:
         return None
 
     def _pred(self):
-        return None
+        atom = self.formula[self.current]
+        pred = self.formula[self.current - 1]
+        if atom == '(':
+            tree[str(self.ID)] = Node('(', parent=self.parent)
+            self.ID += 1
+        else:
+            print("Error, syntax error! Predicate %s isn't followed by '('." % pred)
+            sys.exit(1)
+        arity = int(self.arity[pred]) - 1
+        self.current += 1
+        atom = self.formula[self.current]
+        while arity > 0:
+            if (atom in self.variables) and (self.formula[self.current + 1] == ','):
+                tree[str(self.ID)] = Node('<var>', parent=self.parent)
+                self.ID += 1
+                tree[str(self.ID)] = Node(',', parent=self.parent)
+                self.ID += 1
+                tree[str(self.ID)] = Node(atom, parent=tree[str(self.ID - 2)])
+                self.ID += 1
+                self.current += 2
+                atom = self.formula[self.current]
+            else:
+                print("Error, syntax error! Predicate %s isn't formatted correctly" % pred)
+                sys.exit(1)
+            arity -= 1
+        if atom in self.variables:
+            tree[str(self.ID)] = Node('<var>', parent=self.parent)
+            self.ID += 1
+            tree[str(self.ID)] = Node(atom, parent=tree[str(self.ID - 1)])
+            self.ID += 1
+        else:
+            print("Error, syntax error! Predicate %s isn't formatted correctly" % pred)
+            sys.exit(1)
+        self.current += 1
+        atom = self.formula[self.current]
+        if atom == ')':
+            tree[str(self.ID)] = Node(')', parent=self.parent)
+            self.ID += 1
+        else:
+            print("Error, syntax error! Predicate %s isn't formatted correctly: missing ')'" % pred)
+            sys.exit(1)
+        self.current += 1
 
     def _conn(self):
         return None
