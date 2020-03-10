@@ -3,10 +3,13 @@ import math
 import re
 import sys
 from anytree import Node, RenderTree
-from anytree.exporter import DotExporter
+from anytree.exporter import UniqueDotExporter
 
 INPUT_FOLDER = './Inputs/'
 OUTPUT_FOLDER = './Outputs/'
+ID = 0
+tree = {'<S>': Node('<S>')}
+START = tree['<S>']
 
 
 class Grammar:
@@ -29,6 +32,12 @@ class Grammar:
         self.grammar = {}
         # Read in the file to populate the variables
         self.read_file()
+        self.current = None
+        self.parent = START
+        self.root = START
+        self.ID = 0
+        self.open = 0  # Variable to keep track of number of open brackets
+        self.old = 0
 
     def read_file(self):
         """Function to read in from file supplied from the command line and then update
@@ -76,7 +85,7 @@ class Grammar:
         for atom in self.formula:
             if (len(atom) > 1) and (any(terminal in atom for terminal in self.terminals)):
                 if atom not in self.terminals:
-                    temp = re.split(r'(\(|\)|,)', atom)
+                    temp = re.split(r'([(),])', atom)
                     ind = self.formula.index(atom)
                     temp = [x for x in temp if x != '']
                     num = len(temp) - 1
@@ -125,11 +134,63 @@ class Grammar:
                 t = 2
             print(key + '\t' * t + '->\t' + '|'.join(self.grammar[key]))
 
+    def parse(self):
+        self.current = 0
+        while self.current < len(self.formula):
+            atom = self.formula[self.current]
+            if atom in self.quantifiers:
+                print('quant')
+            elif atom in self.variables:
+                print("var")
+            elif atom == '(':
+                self.open += 1
+            elif atom in self.predicates:
+                print("Predicate")
+            elif atom == ',':
+                print(",")
+            elif atom in self.connectives:
+                print("connective")
+            elif atom == self.neg:
+                print("neg")
+            elif atom == ")":
+                self.open -= 1
+                if self.open < 0:
+                    print("ERROR: Invalid bracketing")
+                    sys.exit(1)
+            elif atom == self.equality:
+                print("equality")
+            elif atom in self.constants:
+                print("Constant")
+            else:
+                print("ERROR, incorrect syntax, unknown character: " + atom)
+                sys.exit(3)
+
+            self._formula()
+            self.current += 1
+
     def _formula(self):
-        return None
+        atom = self.formula[self.current]
+        if atom in self.quantifiers:
+            tree[str(self.ID)] = Node('<quant>', parent=self.parent)
+            self.ID += 1
+            tree[str(self.ID)] = Node(atom, parent=tree[str(self.ID - 1)])
+            self.ID += 1
+            tree[str(self.ID)] = Node('<formula>', parent=self.parent)
+            self.curr_node = tree[str(self.ID)]
+            self.parent = tree[str(self.ID - 2)]
+            self.ID += 1
+            self.current += 1
+            self._quant()
+            self.parent = self.curr_node
 
     def _quant(self):
-        return None
+        atom = self.formula[self.current]
+        if atom in self.variables:
+            tree[str(self.ID)] = Node('<var>', parent=self.parent)
+            self.ID += 1
+            tree[str(self.ID)] = Node(atom, parent=tree[str(self.ID - 1)])
+            self.ID += 1
+
 
     def _var(self):
         return None
@@ -149,6 +210,15 @@ class Grammar:
     def match(self):
         return None
 
+    def save_tree(self):
+        UniqueDotExporter(self.root).to_picture('tree.png')
+
+    def print_tree(self):
+        for pre, fill, node in RenderTree(self.root):
+            print("%s%s" % (pre, node.name))
+
 
 thing = Grammar()
-# thing.gen_grammar()
+thing.parse()
+thing.print_tree()
+thing.save_tree()
