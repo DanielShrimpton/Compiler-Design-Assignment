@@ -22,7 +22,7 @@ Compiler Desgin/
 ├── parser.py
 ├── Inputs/
 │   ├── example.txt
-│   ├── example1.txt
+│   └── example1.txt
 └── Outputs/
 ```
  
@@ -30,4 +30,5 @@ Compiler Desgin/
 This file is the main python file to use to run this project. It will read in the supplied file name 
 as a given argument e.g. `$~ python parser.py example.txt`. It will correctly read in the file 
 and store the variables, constants, predicates, equality, connectives, quantifiers and formula to
-the associated variables, where all but the equality are lists.
+the associated variables. If no text file is supplied it will default to the example text file 
+included in the repository.
