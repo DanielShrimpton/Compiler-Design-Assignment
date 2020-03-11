@@ -53,11 +53,14 @@ class Grammar:
             with open(file, 'r') as file:
                 for line in file.readlines():
                     if 'variables: ' in line:
-                        self.variables = re.findall(r'[ ](\S*)', line)
+                        self.variables = [re.escape(x) if '\\' in x else x for x in
+                                          re.findall(r'[ ](\S*)', line)]
                     elif 'constants: ' in line:
-                        self.constants = re.findall(r'[ ](\S*)', line)
+                        self.constants = [re.escape(x) if '\\' in x else x for x in
+                                          re.findall(r'[ ](\S*)', line)]
                     elif 'predicates: ' in line:
-                        predicates = re.findall(r'[ ](\S*)', line)
+                        predicates = [re.escape(x) if '\\' in x else x for x in
+                                      re.findall(r'[ ](\S*)', line)]
                         for pred in predicates:
                             size = re.search(r'\[\d+\]', pred)
                             length = len(size.group())
@@ -66,16 +69,24 @@ class Grammar:
                             self.arity[predicate] = re.search(r'\d+', pred).group()
                     elif 'equality: ' in line:
                         self.equality = re.search(r'[ ](\S*)', line).group(1)
+                        if '\\' in self.equality:
+                            self.equality = re.escape(self.equality)
                     elif 'connectives: ' in line:
-                        self.connectives = re.findall(r'[ ](\S*)', line)
+                        self.connectives = [re.escape(x) if '\\' in x else x for x in
+                                            re.findall(r'[ ](\S*)', line)]
                     elif 'quantifiers: ' in line:
-                        self.quantifiers = re.findall(r'[ ](\S*)', line)
+                        self.quantifiers = [re.escape(x) if '\\' in x else x for x in
+                                            re.findall(r'[ ](\S*)', line)]
                     elif 'formula: ' in line:
-                        self.formula = re.findall(r'\s(\S+)', line)
+                        self.formula = [re.escape(x) if '\\' in x else x for x in
+                                        re.findall(r'\s(\S+)', line)]
                     else:
                         for x in line.split(' '):
                             if x != '':
-                                self.formula.append(x)
+                                if '\\' in x:
+                                    self.formula.append(re.escape(x))
+                                else:
+                                    self.formula.append(x)
         except FileNotFoundError:
             print("Error, no such file exists: %s" % file)
             sys.exit(-1)
@@ -171,10 +182,9 @@ class Grammar:
             elif atom == ")":
                 self.open -= 1
                 self.parent = self.parent.parent
-                print(self.parent)
-                if self.open < 0:
-                    print("ERROR: Invalid bracketing")
-                    sys.exit(1)
+                # if self.open < 0:
+                #     print("ERROR: Invalid bracketing")
+                #     sys.exit(1)
             elif atom == self.equality:
                 pass
             elif atom in self.constants:
@@ -199,6 +209,8 @@ class Grammar:
             self.current += 1
             self._quant()
             self.parent = self.next_par
+            self.current += 1
+            self._formula()
 
         elif atom in self.predicates:
             """It should be a predicate statement e.g. P(x, y)"""
@@ -225,6 +237,7 @@ class Grammar:
             self.add_node(atom, parent=2)
             self.parent = tree[str(self.ID - 2)]
             self.current += 1
+            self._formula()
 
     def _quant(self):
         atom = self.formula[self.current]
@@ -241,21 +254,7 @@ class Grammar:
     def _var(self):
         return None
 
-    def _const_var(self):
-        return None
-
-    def _assign(self):
-        self.add_node('(')
-        self.current += 1
-        atom = self.formula[self.current]
-        if (atom in self.constants) or (atom in self.variables):
-            self.add_node('<constVar>')
-        else:
-            print("Error, assignment using unknown constant/var: %s" % atom)
-            sys.exit(1)
-        self.add_node(self.equality)
-        self.current += 2
-        atom = self.formula[self.current]
+    def _const_var(self, atom):
         if (atom in self.constants) or (atom in self.variables):
             self.add_node('<constVar>')
             self.add_node(atom, parent=1)
@@ -263,6 +262,16 @@ class Grammar:
             print("Error, assignment using unknown constant/var: %s" % atom)
             sys.exit(1)
         self.current += 1
+
+    def _assign(self):
+        self.add_node('(')
+        self.current += 1
+        atom = self.formula[self.current]
+        self._const_var(atom)
+        self.add_node(self.equality)
+        self.current += 1
+        atom = self.formula[self.current]
+        self._const_var(atom)
         atom = self.formula[self.current]
         if atom == ')':
             self.add_node(')')
@@ -327,3 +336,9 @@ thing = Grammar()
 thing.parse()
 thing.print_tree()
 thing.save_tree()
+lst = []
+for leaf in START.leaves:
+    lst.append(leaf.name)
+
+print(thing.formula)
+print(lst)
