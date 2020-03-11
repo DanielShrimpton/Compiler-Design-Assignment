@@ -7,7 +7,6 @@ from anytree.exporter import UniqueDotExporter
 
 INPUT_FOLDER = './Inputs/'
 OUTPUT_FOLDER = './Outputs/'
-ID = 0
 tree = {'<S>': Node('<S>')}
 START = tree['<S>']
 
@@ -21,21 +20,24 @@ class Grammar:
         # Initialise the variables we will need
         self.variables = []
         self.constants = []
-        self.arity = {}
-        self.predicates = []
+        self.arity = {}  # A dictionary in the form { pred: arity, ... } e.g. { 'P': 2, 'Q': 1 }
+        self.predicates = []  # A list of arity.keys()
         self.equality = ''
         self.connectives = []
-        self.neg = ''
+        self.neg = ''  # The last character of the connectives popped
         self.quantifiers = []
         self.formula = []
         self.terminals = []
         self.grammar = {}
         # Read in the file to populate the variables
         self.read_file()
+        # Initialising variables to help make the tree
         self.current = None
         self.parent = START
         self.root = START
         self.ID = 0
+        self.add_node('<formula>')
+        self.parent = tree['0']
         self.open = 0  # Variable to keep track of number of open brackets
         self.old = 0
 
@@ -47,32 +49,36 @@ class Grammar:
         except IndexError:
             print("Error! No file, using default example.txt")
             file = INPUT_FOLDER + 'example.txt'
-        with open(file, 'r') as file:
-            for line in file.readlines():
-                if 'variables: ' in line:
-                    self.variables = re.findall(r'[ ](\S*)', line)
-                elif 'constants: ' in line:
-                    self.constants = re.findall(r'[ ](\S*)', line)
-                elif 'predicates: ' in line:
-                    predicates = re.findall(r'[ ](\S*)', line)
-                    for pred in predicates:
-                        size = re.search(r'\[\d+\]', pred)
-                        length = len(size.group())
-                        # Check here for in pred[:-length] for invalid characters
-                        predicate = re.search(r'(\w+)\[', pred).group(1)
-                        self.arity[predicate] = re.search(r'\d+', pred).group()
-                elif 'equality: ' in line:
-                    self.equality = re.search(r'[ ](\S*)', line).group(1)
-                elif 'connectives: ' in line:
-                    self.connectives = re.findall(r'[ ](\S*)', line)
-                elif 'quantifiers: ' in line:
-                    self.quantifiers = re.findall(r'[ ](\S*)', line)
-                elif 'formula: ' in line:
-                    self.formula = re.findall(r'\s(\S+)', line)
-                else:
-                    for x in line.split(' '):
-                        if x != '':
-                            self.formula.append(x)
+        try:
+            with open(file, 'r') as file:
+                for line in file.readlines():
+                    if 'variables: ' in line:
+                        self.variables = re.findall(r'[ ](\S*)', line)
+                    elif 'constants: ' in line:
+                        self.constants = re.findall(r'[ ](\S*)', line)
+                    elif 'predicates: ' in line:
+                        predicates = re.findall(r'[ ](\S*)', line)
+                        for pred in predicates:
+                            size = re.search(r'\[\d+\]', pred)
+                            length = len(size.group())
+                            # Check here for in pred[:-length] for invalid characters
+                            predicate = re.search(r'(\w+)\[', pred).group(1)
+                            self.arity[predicate] = re.search(r'\d+', pred).group()
+                    elif 'equality: ' in line:
+                        self.equality = re.search(r'[ ](\S*)', line).group(1)
+                    elif 'connectives: ' in line:
+                        self.connectives = re.findall(r'[ ](\S*)', line)
+                    elif 'quantifiers: ' in line:
+                        self.quantifiers = re.findall(r'[ ](\S*)', line)
+                    elif 'formula: ' in line:
+                        self.formula = re.findall(r'\s(\S+)', line)
+                    else:
+                        for x in line.split(' '):
+                            if x != '':
+                                self.formula.append(x)
+        except FileNotFoundError:
+            print("Error, no such file exists: %s" % file)
+            sys.exit(-1)
 
         self.predicates = list(self.arity.keys())
         if len(self.connectives) != 5:
@@ -119,7 +125,7 @@ class Grammar:
 
         self.grammar = {'<S>': ['<formula>'],
                         '<formula>': ['<quant> <formula>', '(<formula> <conn> <formula>)',
-                                      '<assign>', '<constVar>', '<pred>', self.neg + ' <formula>'],
+                                      '<assign>', '<pred>', self.neg + ' <formula>'],
                         '<quant>': quants,
                         '<var>': self.variables,
                         '<constVar>': self.constants + ['<var>'],
@@ -146,6 +152,7 @@ class Grammar:
     def parse(self):
         self.current = 0
         while self.current < len(self.formula):
+            self.old = self.current
             atom = self.formula[self.current]
             if atom in self.quantifiers:
                 pass
@@ -163,7 +170,8 @@ class Grammar:
                 pass
             elif atom == ")":
                 self.open -= 1
-                # self.parent = self.parent.parent
+                self.parent = self.parent.parent
+                print(self.parent)
                 if self.open < 0:
                     print("ERROR: Invalid bracketing")
                     sys.exit(1)
@@ -176,11 +184,13 @@ class Grammar:
                 sys.exit(3)
 
             self._formula()
-            self.current += 1
+            if self.old == self.current:
+                self.current += 1
 
     def _formula(self):
         atom = self.formula[self.current]
         if atom in self.quantifiers:
+            """It should be a quantifier statement followed by a formula e.g. ∀ x <formula>"""
             self.add_node('<quant>')
             self.add_node(atom, 1)
             self.add_node('<formula>')
@@ -189,7 +199,9 @@ class Grammar:
             self.current += 1
             self._quant()
             self.parent = self.next_par
+
         elif atom in self.predicates:
+            """It should be a predicate statement e.g. P(x, y)"""
             self.add_node('<pred>')
             self.add_node(atom, 1)
             self.next_par = self.parent
@@ -197,13 +209,22 @@ class Grammar:
             self.current += 1
             self._pred()
             self.parent = self.next_par
+
         elif atom == '(':
             if self.formula[self.current + 2] == self.equality:
+                """It should be an assignment statement e.g. (x = y)"""
                 self.add_node('<equality>')
                 self.next_par = self.parent
                 self.parent = tree[str(self.ID - 1)]
                 self._assign()
                 self.parent = self.next_par
+
+        elif atom == self.neg:
+            self.add_node('<neg>')
+            self.add_node('<formula>')
+            self.add_node(atom, parent=2)
+            self.parent = tree[str(self.ID - 2)]
+            self.current += 1
 
     def _quant(self):
         atom = self.formula[self.current]
@@ -214,6 +235,7 @@ class Grammar:
             print("Bad quantifier, not using variables: %s %s" % (self.formula[self.current - 1],
                   atom))
             sys.exit(1)
+        self.current += 1
 
 
     def _var(self):
