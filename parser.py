@@ -163,11 +163,11 @@ class Grammar:
     def parse(self):
         self.current = 0
         self._formula()
-        # while self.current < len(self.formula):
-        #     self.old = self.current
-        #     self._formula()
-        #     if self.old == self.current:
-        #         self.current += 1
+        if self.current == len(self.formula):
+            print("Parsed successfully")
+        else:
+            print("Badly formatted formula")
+            sys.exit(1)
 
     def _formula(self):
         atom = self.formula[self.current]
@@ -176,38 +176,49 @@ class Grammar:
             self.add_node('<quant>')
             self.add_node(atom, 1)
             self.add_node('<formula>')
-            self.next_par = tree[str(self.ID - 1)]
+            next_par = tree[str(self.ID - 1)]
             self.parent = tree[str(self.ID - 3)]
             self.current += 1
             self._quant()
-            self.parent = self.next_par
+            self.parent = next_par
             self._formula()
 
         elif atom in self.predicates:
             """It should be a predicate statement e.g. P(x, y)"""
             self.add_node('<pred>')
             self.add_node(atom, 1)
-            self.next_par = self.parent
+            next_par = self.parent
             self.parent = tree[str(self.ID - 2)]
             self.current += 1
             self._pred()
-            self.parent = self.next_par
+            self.parent = next_par
 
         elif atom == '(':
             if self.formula[self.current + 2] == self.equality:
                 """It should be an assignment statement e.g. (x = y)"""
                 self.add_node('<equality>')
-                self.next_par = self.parent
+                next_par = self.parent
                 self.parent = tree[str(self.ID - 1)]
                 self._assign()
-                self.parent = self.next_par
+                self.parent = next_par
             else:
-                self.add_node('<formula>')
-                self.parent = tree[str(self.ID - 1)]
-                self.add_node('(')
                 self.open += 1
+                conn = self.find_conn()
+                self.add_node('(')
+                self.add_node('<formula>')
                 self.current += 1
+                next_par = self.parent
+                self.parent = tree[str(self.ID - 1)]
                 self._formula()
+                self.parent = next_par
+                self.add_node('<conn>')
+                self.add_node(conn, parent=1)
+                self.add_node('<formula>')
+                self.current += 1
+                self.add_node(')')
+                self.parent = tree[str(self.ID - 2)]
+                self._formula()
+                self.current += 1
 
         elif atom == self.neg:
             self.add_node('<neg>')
@@ -224,16 +235,11 @@ class Grammar:
             self.parent = self.parent.parent
 
         elif atom in self.connectives:
-            self.parent = self.parent.parent
-            self.add_node('<conn>')
-            self.add_node(atom, parent=1)
-            self.add_node('<formula>')
-            self.parent = tree[str(self.ID - 1)]
             self.current += 1
-            self._formula()
 
-        if self.open > 0:
-            self._formula()
+        else:
+            print("Incorrect syntax: Unexpected character '%s'" % atom)
+            sys.exit(1)
 
     def _quant(self):
         atom = self.formula[self.current]
@@ -312,6 +318,21 @@ class Grammar:
             print("Error, syntax error! Predicate %s isn't formatted correctly: missing ')'" % pred)
             sys.exit(1)
         self.current += 1
+
+    def find_conn(self):
+        num = self.current
+        open = self.open
+        for i in range(num + 1, len(self.formula)):
+            atom = self.formula[i]
+            if atom == '(':
+                open += 1
+            elif atom == ')':
+                open -= 1
+            elif atom in self.connectives:
+                if open == self.open:
+                    return atom
+        print("Error, invalid syntax, redundant brackets")
+        sys.exit(1)
 
     def _conn(self):
         return None
