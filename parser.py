@@ -162,40 +162,12 @@ class Grammar:
 
     def parse(self):
         self.current = 0
-        while self.current < len(self.formula):
-            self.old = self.current
-            atom = self.formula[self.current]
-            if atom in self.quantifiers:
-                pass
-            elif atom in self.variables:
-                pass
-            elif atom == '(':
-                self.open += 1
-            elif atom in self.predicates:
-                pass
-            elif atom == ',':
-                pass
-            elif atom in self.connectives:
-                pass
-            elif atom == self.neg:
-                pass
-            elif atom == ")":
-                self.open -= 1
-                self.parent = self.parent.parent
-                # if self.open < 0:
-                #     print("ERROR: Invalid bracketing")
-                #     sys.exit(1)
-            elif atom == self.equality:
-                pass
-            elif atom in self.constants:
-                pass
-            else:
-                print("ERROR, incorrect syntax, unknown character: " + atom)
-                sys.exit(3)
-
-            self._formula()
-            if self.old == self.current:
-                self.current += 1
+        self._formula()
+        # while self.current < len(self.formula):
+        #     self.old = self.current
+        #     self._formula()
+        #     if self.old == self.current:
+        #         self.current += 1
 
     def _formula(self):
         atom = self.formula[self.current]
@@ -209,7 +181,6 @@ class Grammar:
             self.current += 1
             self._quant()
             self.parent = self.next_par
-            self.current += 1
             self._formula()
 
         elif atom in self.predicates:
@@ -230,6 +201,13 @@ class Grammar:
                 self.parent = tree[str(self.ID - 1)]
                 self._assign()
                 self.parent = self.next_par
+            else:
+                self.add_node('<formula>')
+                self.parent = tree[str(self.ID - 1)]
+                self.add_node('(')
+                self.open += 1
+                self.current += 1
+                self._formula()
 
         elif atom == self.neg:
             self.add_node('<neg>')
@@ -237,6 +215,24 @@ class Grammar:
             self.add_node(atom, parent=2)
             self.parent = tree[str(self.ID - 2)]
             self.current += 1
+            self._formula()
+
+        elif atom == ')':
+            self.add_node(')')
+            self.open -= 1
+            self.current += 1
+            self.parent = self.parent.parent
+
+        elif atom in self.connectives:
+            self.parent = self.parent.parent
+            self.add_node('<conn>')
+            self.add_node(atom, parent=1)
+            self.add_node('<formula>')
+            self.parent = tree[str(self.ID - 1)]
+            self.current += 1
+            self._formula()
+
+        if self.open > 0:
             self._formula()
 
     def _quant(self):
@@ -249,7 +245,6 @@ class Grammar:
                   atom))
             sys.exit(1)
         self.current += 1
-
 
     def _var(self):
         return None
@@ -334,11 +329,11 @@ class Grammar:
 
 thing = Grammar()
 thing.parse()
-thing.print_tree()
+# thing.print_tree()
 thing.save_tree()
 lst = []
 for leaf in START.leaves:
     lst.append(leaf.name)
 
-print(thing.formula)
-print(lst)
+print(' '.join(thing.formula))
+print(' '.join(lst))
