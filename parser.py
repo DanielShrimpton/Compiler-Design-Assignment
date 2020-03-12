@@ -28,7 +28,9 @@ class Grammar:
         self.quantifiers = []
         self.formula = []
         self.terminals = []
+        self.non_terminals = []
         self.grammar = {}
+        self.names = []
         # Read in the file to populate the variables
         self.file_name = ''
         self.read_file()
@@ -49,7 +51,7 @@ class Grammar:
             file = INPUT_FOLDER + sys.argv[1]
             self.file_name = sys.argv[1].strip('.txt')
         except IndexError:
-            print("Error! No file, using default example.txt")
+            print("Warning: no file supplied, using default 'example.txt'")
             file = INPUT_FOLDER + 'example.txt'
             self.file_name = 'example'
         try:
@@ -57,29 +59,46 @@ class Grammar:
                 for line in file.readlines():
                     if 'variables: ' in line:
                         self.variables = [re.escape(x) if '\\' in x else x for x in
-                                          re.findall(r'[ ](\S*)', line)]
+                                          re.findall(r'[ ](\S+)', line)]
+                        self.names += self.variables
                     elif 'constants: ' in line:
                         self.constants = [re.escape(x) if '\\' in x else x for x in
-                                          re.findall(r'[ ](\S*)', line)]
+                                          re.findall(r'[ ](\S+)', line)]
+                        self.names += self.constants
                     elif 'predicates: ' in line:
                         predicates = [re.escape(x) if '\\' in x else x for x in
-                                      re.findall(r'[ ](\S*)', line)]
-                        for pred in predicates:
-                            size = re.search(r'\[\d+\]', pred)
-                            length = len(size.group())
-                            # Check here for in pred[:-length] for invalid characters
-                            predicate = re.search(r'(\w+)\[', pred).group(1)
-                            self.arity[predicate] = re.search(r'\d+', pred).group()
+                                      re.findall(r'[ ](\S+)\[(\d+)\]', line)]
+                        for pred, size in predicates:
+                            if '(' in pred:
+                                sys.stderr.write("error, illegal character found in predicate %s, "
+                                                 "not allowed '('" % pred)
+                                sys.exit(1)
+                            self.arity[pred] = size
                     elif 'equality: ' in line:
-                        self.equality = re.search(r'[ ](\S*)', line).group(1)
+                        self.equality = re.search(r'[ ](\S+)', line).group(1)
                         if '\\' in self.equality:
                             self.equality = re.escape(self.equality)
+                        if len(self.equality) != 1:
+                            sys.stderr.write("InputError: incorrect number of equalities supplied, "
+                                             "there needs to be 1")
+                            sys.exit(2)
+                        self.names.append(self.equality)
                     elif 'connectives: ' in line:
                         self.connectives = [re.escape(x) if '\\' in x else x for x in
-                                            re.findall(r'[ ](\S*)', line)]
+                                            re.findall(r'[ ](\S+)', line)]
+                        if len(self.connectives) != 5:
+                            sys.stderr.write("InputError: incorrect number of connectives "
+                                             "supplied, there needs to be 5")
+                            sys.exit(1)
+                        self.names += self.connectives
                     elif 'quantifiers: ' in line:
                         self.quantifiers = [re.escape(x) if '\\' in x else x for x in
-                                            re.findall(r'[ ](\S*)', line)]
+                                            re.findall(r'[ ](\S+)', line)]
+                        if len(self.quantifiers) != 2:
+                            sys.stderr.write("InputError: incorrect number of quantifiers "
+                                             "supplied, there needs to be 2")
+                            sys.exit(1)
+                        self.names += self.quantifiers
                     elif 'formula: ' in line:
                         self.formula = [re.escape(x) if '\\' in x else x for x in
                                         re.findall(r'\s(\S+)', line)]
@@ -91,16 +110,17 @@ class Grammar:
                                 else:
                                     self.formula.append(x)
         except FileNotFoundError:
-            print("Error, no such file exists: %s" % file)
+            sys.stderr.write("FileNotFoundError: cannot find file: %s" % file)
             sys.exit(-1)
 
         self.predicates = list(self.arity.keys())
-        if len(self.connectives) != 5:
-            print("Incorrect number of connectives supplied!")
-            sys.exit(2)
+        self.names += self.predicates
+        names_set = set(self.names)
+        if len(names_set) != len(self.names):
+            sys.stderr.write("InputError: no duplicate names allowed")
+            sys.exit(1)
         self.neg = self.connectives.pop(-1)
 
-        print(self.formula)
         self.gen_grammar()
         for atom in self.formula:
             if (len(atom) > 1) and (any(terminal in atom for terminal in self.terminals)):
@@ -114,15 +134,13 @@ class Grammar:
                         self.formula.insert(ind, temp[num])
                         num -= 1
 
-        print(self.formula)
-
     def gen_grammar(self):
         """Generate the grammar, the production rules and terminal and non-terminal symbols"""
-        self.terminals = self.quantifiers + self.predicates + self.connectives + [self.equality] \
-                         + self.constants + self.variables + [',', '(', ')']
+        self.terminals = self.quantifiers + self.predicates + self.connectives + [self.neg]
+        self.terminals += [self.equality] + self.constants + self.variables + [',', '(', ')']
 
-        print('\nTerminal symbols: ' + '|'.join(self.terminals))
-        print("\nGrammar Production Rules: \n")
+        self.non_terminals = ['<S>', '<formula>', '<quant>', '<conn>', '<assign>', '<pred>',
+                              '<var>', '<constVar>']
 
         quants = self.quantifiers[:]  # Make a copy of the list so as not to change the original
         #                               list
@@ -148,6 +166,12 @@ class Grammar:
                         '<conn>': self.connectives
                         }
 
+    def print_grammar(self):
+        print('\nTerminal symbols: ' + '|'.join(self.terminals))
+        print('\nNon-Terminal symbols: ' + '|'.join(self.non_terminals))
+        print('\nStart symbol: <S>')
+        print("\nGrammar Production Rules: \n")
+
         for key in self.grammar.keys():
             t = math.ceil((12 - len(key)) / 4)
             if key == '<S>':
@@ -167,9 +191,10 @@ class Grammar:
         self.current = 0
         self._formula()
         if self.current == len(self.formula):
-            print("Parsed successfully")
+            self.print_grammar()
         else:
-            print("Badly formatted formula")
+            sys.stderr.write("SyntaxError: Unexpected part of formula: %s" % ' '.join(self.formula[
+                self.current:]))
             sys.exit(1)
 
     def _formula(self):
@@ -255,9 +280,6 @@ class Grammar:
             sys.exit(1)
         self.current += 1
 
-    def _var(self):
-        return None
-
     def _const_var(self, atom):
         if (atom in self.constants) or (atom in self.variables):
             self.add_node('<constVar>')
@@ -324,24 +346,18 @@ class Grammar:
 
     def find_conn(self):
         num = self.current
-        open = self.open
+        open_ = self.open
         for i in range(num + 1, len(self.formula)):
             atom = self.formula[i]
             if atom == '(':
-                open += 1
+                open_ += 1
             elif atom == ')':
-                open -= 1
+                open_ -= 1
             elif atom in self.connectives:
-                if open == self.open:
+                if open_ == self.open:
                     return atom
         print("Error, invalid syntax, redundant brackets")
         sys.exit(1)
-
-    def _conn(self):
-        return None
-
-    def match(self):
-        return None
 
     def save_tree(self):
         UniqueDotExporter(self.root).to_picture('Outputs/' + self.file_name + '.png')
@@ -359,5 +375,5 @@ lst = []
 for leaf in START.leaves:
     lst.append(leaf.name)
 
-print(' '.join(thing.formula))
-print(' '.join(lst))
+# print(' '.join(thing.formula))
+# print(' '.join(lst))
