@@ -30,6 +30,7 @@ class Grammar:
         self.terminals = []
         self.grammar = {}
         # Read in the file to populate the variables
+        self.file_name = ''
         self.read_file()
         # Initialising variables to help make the tree
         self.current = None
@@ -46,9 +47,11 @@ class Grammar:
         corresponding variables"""
         try:
             file = INPUT_FOLDER + sys.argv[1]
+            self.file_name = sys.argv[1].strip('.txt')
         except IndexError:
             print("Error! No file, using default example.txt")
             file = INPUT_FOLDER + 'example.txt'
+            self.file_name = 'example'
         try:
             with open(file, 'r') as file:
                 for line in file.readlines():
@@ -341,7 +344,7 @@ class Grammar:
         return None
 
     def save_tree(self):
-        UniqueDotExporter(self.root).to_picture('tree.png')
+        UniqueDotExporter(self.root).to_picture('Outputs/' + self.file_name + '.png')
 
     def print_tree(self):
         for pre, fill, node in RenderTree(self.root):
