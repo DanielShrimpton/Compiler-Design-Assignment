@@ -143,6 +143,22 @@ class Grammar:
             elif re.search(r'\)', name):
                 sys.stderr.write("NameError: items cannot contain the character ')'")
                 sys.exit(1)
+            elif re.search(r'=', name):
+                if name != self.equality:
+                    sys.stderr.write("NameError: items cannot contain the character '=' unless it "
+                                     "is equality")
+                    sys.exit(1)
+            elif re.search(r'/', name):
+                if name in self.connectives:
+                    sys.stderr.write("NameError: connectives cannot contain character '/'")
+                    sys.exit(1)
+                elif name in self.quantifiers:
+                    sys.stderr.write("NameError: quantifiers cannot contain character '/'")
+                    sys.exit(1)
+            elif not re.match(r'^[\w\\]+$', name):
+                if not ((name == self.equality) and re.match(r'=', name)):
+                    sys.stderr.write("NameError: illegal character detected in %s" % name)
+                    sys.exit(1)
 
         self.neg = self.connectives.pop(-1)
 
