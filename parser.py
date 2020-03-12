@@ -155,7 +155,7 @@ class Grammar:
                 elif name in self.quantifiers:
                     sys.stderr.write("NameError: quantifiers cannot contain character '/'")
                     sys.exit(1)
-            elif not re.match(r'^[\w\\]+$', name):
+            elif not re.match(r'^[\w\\_]+$', name):
                 if not ((name == self.equality) and re.match(r'=', name)):
                     sys.stderr.write("NameError: illegal character detected in %s" % name)
                     sys.exit(1)
