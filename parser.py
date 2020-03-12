@@ -57,33 +57,43 @@ class Grammar:
         try:
             with open(file, 'r') as file:
                 for line in file.readlines():
-                    if 'variables: ' in line:
+                    if 'variables:' in line:
                         self.variables = [re.escape(x) if '\\' in x else x for x in
                                           re.findall(r'[ ](\S+)', line)]
                         self.names += self.variables
-                    elif 'constants: ' in line:
+                    elif 'constants:' in line:
                         self.constants = [re.escape(x) if '\\' in x else x for x in
                                           re.findall(r'[ ](\S+)', line)]
                         self.names += self.constants
-                    elif 'predicates: ' in line:
+                    elif 'predicates:' in line:
                         predicates = [re.escape(x) if '\\' in x else x for x in
                                       re.findall(r'[ ](\S+)\[(\d+)\]', line)]
                         for pred, size in predicates:
                             if '(' in pred:
-                                sys.stderr.write("error, illegal character found in predicate %s, "
-                                                 "not allowed '('" % pred)
+                                sys.stderr.write("NameError: illegal character found in predicate "
+                                                 "%s, the character '(' is not allowed" % pred)
+                                sys.exit(1)
+                            elif ')' in pred:
+                                sys.stderr.write("NameError: illegal character found in predicate "
+                                                 "%s, the character ')' is not allowed" % pred)
+                                sys.exit(1)
+                            elif ':' in pred:
+                                sys.stderr.write("NameError: illegal character found in predicate "
+                                                 "%s, the character ':' is not allowed" % pred)
                                 sys.exit(1)
                             self.arity[pred] = size
-                    elif 'equality: ' in line:
-                        self.equality = re.search(r'[ ](\S+)', line).group(1)
-                        if '\\' in self.equality:
-                            self.equality = re.escape(self.equality)
+                    elif 'equality:' in line:
+                        self.equality = re.findall(r'[ ](\S+)', line)
                         if len(self.equality) != 1:
                             sys.stderr.write("InputError: incorrect number of equalities supplied, "
                                              "there needs to be 1")
                             sys.exit(2)
+                        else:
+                            self.equality = self.equality[0]
+                        if '\\' in self.equality:
+                            self.equality = re.escape(self.equality)
                         self.names.append(self.equality)
-                    elif 'connectives: ' in line:
+                    elif 'connectives:' in line:
                         self.connectives = [re.escape(x) if '\\' in x else x for x in
                                             re.findall(r'[ ](\S+)', line)]
                         if len(self.connectives) != 5:
@@ -91,7 +101,7 @@ class Grammar:
                                              "supplied, there needs to be 5")
                             sys.exit(1)
                         self.names += self.connectives
-                    elif 'quantifiers: ' in line:
+                    elif 'quantifiers:' in line:
                         self.quantifiers = [re.escape(x) if '\\' in x else x for x in
                                             re.findall(r'[ ](\S+)', line)]
                         if len(self.quantifiers) != 2:
@@ -99,7 +109,7 @@ class Grammar:
                                              "supplied, there needs to be 2")
                             sys.exit(1)
                         self.names += self.quantifiers
-                    elif 'formula: ' in line:
+                    elif 'formula:' in line:
                         self.formula = [re.escape(x) if '\\' in x else x for x in
                                         re.findall(r'\s(\S+)', line)]
                     else:
@@ -119,6 +129,21 @@ class Grammar:
         if len(names_set) != len(self.names):
             sys.stderr.write("InputError: no duplicate names allowed")
             sys.exit(1)
+
+        for name in self.names:
+            if re.search(r'^<', name):
+                sys.stderr.write("NameError: items cannot begin with '<'")
+                sys.exit(1)
+            elif re.search(r'\(', name):
+                sys.stderr.write("NameError: items cannot contain the character '('")
+                sys.exit(1)
+            elif re.search(r':', name):
+                sys.stderr.write("NameError: items cannot contain the character ':'")
+                sys.exit(1)
+            elif re.search(r'\)', name):
+                sys.stderr.write("NameError: items cannot contain the character ')'")
+                sys.exit(1)
+
         self.neg = self.connectives.pop(-1)
 
         self.gen_grammar()
@@ -194,7 +219,7 @@ class Grammar:
             self.print_grammar()
         else:
             sys.stderr.write("SyntaxError: Unexpected part of formula: %s" % ' '.join(self.formula[
-                self.current:]))
+                                                                                      self.current:]))
             sys.exit(1)
 
     def _formula(self):
@@ -266,7 +291,7 @@ class Grammar:
             self.current += 1
 
         else:
-            print("Incorrect syntax: Unexpected character '%s'" % atom)
+            sys.stderr.write("SyntaxError: Unexpected character '%s'" % atom)
             sys.exit(1)
 
     def _quant(self):
@@ -275,8 +300,8 @@ class Grammar:
             self.add_node('<var>')
             self.add_node(atom, 1)
         else:
-            print("Bad quantifier, not using variables: %s %s" % (self.formula[self.current - 1],
-                  atom))
+            sys.stderr.write("SyntaxError: quantifier not followed by known variable: %s %s" %
+                             (self.formula[self.current - 1], atom))
             sys.exit(1)
         self.current += 1
 
@@ -285,7 +310,7 @@ class Grammar:
             self.add_node('<constVar>')
             self.add_node(atom, parent=1)
         else:
-            print("Error, assignment using unknown constant/var: %s" % atom)
+            sys.stderr.write("SyntaxError: assignment using unknown constant/variable: %s" % atom)
             sys.exit(1)
         self.current += 1
 
@@ -302,8 +327,8 @@ class Grammar:
         if atom == ')':
             self.add_node(')')
         else:
-            print("Error, assignment missing closing bracket: %s" %
-                  " ".join(self.formula[self.current-4:self.current]))
+            sys.stderr.write("SyntaxError, assignment missing closing bracket: %s" %
+                             " ".join(self.formula[self.current - 4:self.current]))
             sys.exit(1)
         self.current += 1
 
@@ -313,7 +338,7 @@ class Grammar:
         if atom == '(':
             self.add_node('(')
         else:
-            print("Error, syntax error! Predicate %s isn't followed by '('." % pred)
+            sys.stderr.write("SyntaxError: predicate %s isn't followed by '('." % pred)
             sys.exit(1)
         arity = int(self.arity[pred]) - 1
         self.current += 1
@@ -326,21 +351,23 @@ class Grammar:
                 self.current += 2
                 atom = self.formula[self.current]
             else:
-                print("Error, syntax error! Predicate %s isn't formatted correctly" % pred)
+                sys.stderr.write("Error, syntax error! Predicate %s isn't formatted correctly"
+                                 % pred)
                 sys.exit(1)
             arity -= 1
         if atom in self.variables:
             self.add_node('<var>')
             self.add_node(atom, 1)
         else:
-            print("Error, syntax error! Predicate %s isn't formatted correctly" % pred)
+            sys.stderr.write("Error, syntax error! Predicate %s isn't formatted correctly" % pred)
             sys.exit(1)
         self.current += 1
         atom = self.formula[self.current]
         if atom == ')':
             self.add_node(')')
         else:
-            print("Error, syntax error! Predicate %s isn't formatted correctly: missing ')'" % pred)
+            sys.stderr.write("Error, syntax error! Predicate %s isn't formatted correctly: "
+                             "missing ')'" % pred)
             sys.exit(1)
         self.current += 1
 
@@ -356,24 +383,13 @@ class Grammar:
             elif atom in self.connectives:
                 if open_ == self.open:
                     return atom
-        print("Error, invalid syntax, redundant brackets")
+        sys.stderr.write("Error, invalid syntax, redundant brackets")
         sys.exit(1)
 
     def save_tree(self):
         UniqueDotExporter(self.root).to_picture('Outputs/' + self.file_name + '.png')
 
-    def print_tree(self):
-        for pre, fill, node in RenderTree(self.root):
-            print("%s%s" % (pre, node.name))
-
 
 thing = Grammar()
 thing.parse()
-# thing.print_tree()
 thing.save_tree()
-lst = []
-for leaf in START.leaves:
-    lst.append(leaf.name)
-
-# print(' '.join(thing.formula))
-# print(' '.join(lst))
