@@ -1,0 +1,16 @@
+Terminal symbols: E|A|Same|Non_zero|notEqual|AND|OR|IMPLIES|IFF|NOT|==|30|Z|price|cost1|,|(|)
+
+Non-Terminal symbols: <S>|<formula>|<quant>|<conn>|<assign>|<pred>|<var>|<constVar>
+
+Start symbol: <S>
+
+Grammar Production Rules: 
+
+<S>		->	<formula>
+<formula>	->	<quant> <formula>|(<formula> <conn> <formula>)|<assign>|<pred>|NOT <formula>
+<quant>		->	E <var>|A <var>
+<var>		->	price|cost1
+<constVar>	->	30|Z|<var>
+<assign>	->	(<constVar> == <constVar>)
+<pred>		->	Same(<var>, <var>)|Non_zero(<var>)|notEqual(<var>, <var>, <var>)
+<conn>		->	AND|OR|IMPLIES|IFF

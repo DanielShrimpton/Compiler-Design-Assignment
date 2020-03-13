@@ -1,0 +1,16 @@
+Terminal symbols: \exists|\forall|P|Q|\land|\lor|\implies|\iff|\neg|=|C|D|w|x|y|z|,|(|)
+
+Non-Terminal symbols: <S>|<formula>|<quant>|<conn>|<assign>|<pred>|<var>|<constVar>
+
+Start symbol: <S>
+
+Grammar Production Rules: 
+
+<S>		->	<formula>
+<formula>	->	<quant> <formula>|(<formula> <conn> <formula>)|<assign>|<pred>|\neg <formula>
+<quant>		->	\exists <var>|\forall <var>
+<var>		->	w|x|y|z
+<constVar>	->	C|D|<var>
+<assign>	->	(<constVar> = <constVar>)
+<pred>		->	P(<var>, <var>)|Q(<var>)
+<conn>		->	\land|\lor|\implies|\iff
