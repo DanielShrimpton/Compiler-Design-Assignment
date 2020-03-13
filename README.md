@@ -36,5 +36,18 @@ included in the repository.
 ### Outputs
 This script will, upon a successful run, print the terminal symbols separated by `|` followed by
 the non-terminal symbols separated by `|`. It will then print the start symbol and finally the
-grammar production rules. If it encounters any errors then it will print to `stderr` with the
-appropriate message.
+grammar production rules. It also saves these grammar production rules, terminal and non-terminal
+symbols to a file of the input name + `-grammer.txt` so e.g. for `example.txt` it would output to
+`example-grammar.txt`. 
+
+If it encounters any errors then it will print to `stderr` with the appropriate message and exit
+with a non-zero exit code.
+
+It will also save the parse tree of the formula, if it is valid, to the `Outputs/` folder under
+the name of the file + `.png` e.g. for `example.txt` it would output `example.png`.
+
+Log file output including successful parsing of formula, successful node added to the graph and
+any error that may occur. It is in the format 
+```
+HH:MM:SS    OK/warning/error    description
+```
