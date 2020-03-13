@@ -240,7 +240,6 @@ class Grammar:
 
         tree[str(self.ID)] = Node(tag, parent=parent)
         self.ID += 1
-        log("info", "Added node %s" % tag)
 
     def parse(self):
         self.current = 0
@@ -437,8 +436,6 @@ def log(type_, string):
     if type_ == 'warning':
         print(string)
     elif type_ == 'OK':
-        pass
-    elif type_ == 'info':
         pass
     else:
         sys.stderr.write(string + '\n')
