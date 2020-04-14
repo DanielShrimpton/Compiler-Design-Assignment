@@ -18,7 +18,7 @@ variables, and if it isn't, add it. I had to add `C:\Program Files (x86)\Graphvi
 The python file should be stored in the root directory of where you want this to run. The folder 
 structure should then be as follows:
 ```
-Compiler Desgin/
+Compiler Design/
 ├── Inputs/
 │   ├── example.txt
 │   └── example1.txt
